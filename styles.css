@@ -146,6 +146,13 @@ a { color: inherit; text-decoration: none; }
 }
 .nav__cta:hover { border-color: var(--accent); color: var(--accent); }
 
+.nav__cta--connect {
+    background: var(--accent);
+    color: var(--on-accent);
+    border-color: transparent;
+}
+.nav__cta--connect:hover { border-color: transparent; color: var(--on-accent); opacity: 0.9; }
+
 .theme-toggle {
     display: inline-flex;
     align-items: center;
