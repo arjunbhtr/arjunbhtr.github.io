@@ -175,6 +175,24 @@ a { color: inherit; text-decoration: none; }
 .theme-toggle:hover { border-color: var(--accent); transform: scale(1.06); }
 .theme-toggle:active { transform: scale(0.94); }
 
+.icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 999px;
+    border: 1px solid var(--surface-border);
+    background: var(--surface);
+    cursor: pointer;
+    font-size: 1.1rem;
+    line-height: 1;
+    transition: border-color 0.2s, transform 0.2s, background 0.3s ease;
+}
+.icon-btn:hover { border-color: var(--accent); transform: scale(1.06); }
+.icon-btn:active { transform: scale(0.94); }
+.icon-btn--confirmed { border-color: var(--accent); background: var(--accent-soft); }
+
 .nav__toggle { display: none; flex-direction: column; gap: 5px; background: none; border: none; cursor: pointer; padding: 8px; }
 .nav__toggle span { width: 22px; height: 2px; background: var(--ink); border-radius: 2px; }
 
@@ -448,6 +466,45 @@ main { position: relative; z-index: 1; }
 .timeline__place { color: var(--muted); font-size: 0.85rem; margin: 0 0 10px; }
 .timeline__content > p:last-child { color: var(--muted); margin: 0; font-size: 0.95rem; }
 
+/* ---------- recommendations ---------- */
+.testimonials__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+.testimonial {
+    margin: 0;
+    background: var(--surface);
+    border: 1px solid var(--surface-border);
+    border-radius: 16px;
+    padding: 28px;
+    backdrop-filter: blur(10px);
+    transition: border-color 0.25s, transform 0.25s;
+    position: relative;
+}
+.testimonial:hover { border-color: var(--accent); transform: translateY(-4px); }
+.testimonial::before {
+    content: '“';
+    position: absolute;
+    top: 8px;
+    left: 20px;
+    font-family: var(--font-mono);
+    font-size: 3rem;
+    color: var(--accent-soft);
+    line-height: 1;
+}
+.testimonial p {
+    margin: 0 0 20px;
+    color: var(--ink);
+    font-size: 0.98rem;
+    line-height: 1.6;
+    position: relative;
+    z-index: 1;
+}
+.testimonial footer { display: flex; flex-direction: column; }
+.testimonial footer strong { font-size: 0.95rem; }
+.testimonial footer span { color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
+
 /* ---------- bento skills ---------- */
 .bento {
     display: grid;
@@ -551,6 +608,9 @@ main { position: relative; z-index: 1; }
     .bento__card--lg { grid-column: span 2; }
     .bento__card--full { grid-column: span 2; }
     .projects__grid { grid-template-columns: 1fr; }
+    .nav__links { gap: 18px; font-size: 0.84rem; }
+    .nav__actions { gap: 10px; }
+    .testimonials__grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 680px) {

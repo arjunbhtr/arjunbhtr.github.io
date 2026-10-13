@@ -84,6 +84,23 @@ test.describe('Contact section', () => {
     // forget to replace when copy-pasting a template contact section
     await expect(contact.locator('.btn--placeholder')).toHaveCount(0);
   });
+
+  test('copy-email button copies the real address to the clipboard', async ({ page, context, browserName }) => {
+    // clipboard permission grants aren't reliably supported outside Chromium
+    test.skip(browserName !== 'chromium', 'clipboard-read permission is Chromium-only in Playwright');
+
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.goto('/#contact');
+
+    const copyBtn = page.locator('#copyEmailBtn');
+    await expect(copyBtn).toHaveAttribute('data-email', 'arjun9621bhtr@gmail.com');
+
+    await copyBtn.click();
+    await expect(copyBtn).toHaveAttribute('aria-label', 'Copied!');
+
+    const clipboardText = await page.evaluate(() => navigator.clipboard.readText());
+    expect(clipboardText).toBe('arjun9621bhtr@gmail.com');
+  });
 });
 
 test.describe('Scroll interactions', () => {

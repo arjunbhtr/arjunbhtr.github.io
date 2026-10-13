@@ -489,3 +489,48 @@ document.querySelectorAll('.tags').forEach(tagGroup => {
         onEnter: () => gsap.to(chips, { opacity: 1, scale: 1, duration: 0.4, stagger: 0.045, ease: 'back.out(1.7)' }),
     });
 });
+
+/* ---------- copy-email button ---------- */
+(function initCopyEmailButton() {
+
+    const button = document.getElementById('copyEmailBtn');
+    if (!button) return;
+
+    const icon = button.querySelector('.icon-btn__icon');
+    const originalIcon = icon.textContent;
+    const originalLabel = button.getAttribute('aria-label');
+    let resetTimer = null;
+
+    // a visually-hidden live region so screen readers hear "copied", separate
+    // from the icon swap, which assistive tech wouldn't otherwise announce
+    const announcer = document.createElement('span');
+    announcer.setAttribute('aria-live', 'polite');
+    announcer.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);';
+    document.body.appendChild(announcer);
+
+    button.addEventListener('click', async () => {
+
+        const email = button.dataset.email;
+
+        try {
+            await navigator.clipboard.writeText(email);
+        } catch {
+            // Clipboard API unavailable (e.g. insecure context, older browser) —
+            // fail silently; the adjacent mailto: link still works as the
+            // primary way to reach out.
+            return;
+        }
+
+        clearTimeout(resetTimer);
+        icon.textContent = '✅';
+        button.setAttribute('aria-label', 'Copied!');
+        button.classList.add('icon-btn--confirmed');
+        announcer.textContent = 'Email address copied to clipboard';
+
+        resetTimer = setTimeout(() => {
+            icon.textContent = originalIcon;
+            button.setAttribute('aria-label', originalLabel);
+            button.classList.remove('icon-btn--confirmed');
+        }, 1500);
+    });
+})();
