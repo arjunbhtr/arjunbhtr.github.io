@@ -665,6 +665,26 @@ html.lenis { scroll-behavior: auto; }
 .lenis.lenis-stopped { overflow: clip; }
 .lenis.lenis-smooth iframe { pointer-events: none; }
 
+/* ---------- projects: an odd last card spans the row instead of leaving a gap ---------- */
+.projects__grid > .card:last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+/* ---------- auto-hiding nav ---------- */
+.nav { transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
+.nav--hidden { transform: translateY(-100%); }
+
+/* ---------- keyboard focus rings (mouse clicks don't trigger :focus-visible) ---------- */
+a:focus-visible,
+button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 6px;
+}
+.nav__cta:focus-visible,
+.theme-toggle:focus-visible,
+.icon-btn:focus-visible,
+.back-to-top:focus-visible { border-radius: 999px; }
+.btn:focus-visible { border-radius: 10px; }
+
 /* ---------- hero name: per-letter 3D flip ---------- */
 .hero__name { perspective: 800px; }
 .hero__word { display: inline-block; white-space: nowrap; }
@@ -674,31 +694,6 @@ html.lenis { scroll-behavior: auto; }
 .about__text .scrub-word { color: var(--muted); transition: color 0.35s ease; }
 .about__text .scrub-word.is-lit { color: var(--ink); }
 
-/* ---------- Projects: pinned horizontal scroll (desktop, toggled by JS) ---------- */
-.projects--horizontal { padding-top: 100px; padding-bottom: 48px; }
-.projects--horizontal .projects__grid {
-    display: flex;
-    gap: 24px;
-    width: max-content;
-}
-.projects--horizontal .projects__grid .card { width: 420px; flex-shrink: 0; }
-
-/* ---------- custom cursor ring ---------- */
-.cursor-ring {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 34px;
-    height: 34px;
-    border: 1.5px solid var(--accent);
-    border-radius: 50%;
-    pointer-events: none;
-    z-index: 9999;
-    opacity: 0;
-    transition: opacity 0.25s, width 0.25s ease, height 0.25s ease, background-color 0.25s;
-}
-.cursor-ring.is-visible { opacity: 1; }
-.cursor-ring.is-hover { width: 64px; height: 64px; background-color: var(--accent-soft); }
 
 /* ---------- responsive ---------- */
 @media (min-width: 1400px) {
@@ -758,4 +753,5 @@ html.lenis { scroll-behavior: auto; }
     .btn--primary { animation: none; }
     .back-to-top { transition: none; }
     .marquee__track { animation: none; }
+    .nav { transition: none; }
 }

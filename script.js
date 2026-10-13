@@ -542,69 +542,6 @@ if (window.gsap && window.ScrollTrigger) {
 
     if (!prefersReducedMotion) {
 
-        /* ----- Projects: pin the section and scroll cards sideways (desktop) ----- */
-        gsap.matchMedia().add('(min-width: 1024px)', () => {
-            const section = document.getElementById('projects');
-            const grid = section?.querySelector('.projects__grid');
-            if (!section || !grid) return;
-
-            section.classList.add('projects--horizontal');
-
-            // measured from the section box, which isn't transformed, so it stays
-            // correct on refresh even mid-scroll
-            const distance = () => {
-                const contentLeft = section.getBoundingClientRect().left + parseFloat(getComputedStyle(section).paddingLeft);
-                return Math.max(0, grid.scrollWidth - (window.innerWidth - contentLeft - 64));
-            };
-
-            gsap.to(grid, {
-                x: () => -distance(),
-                ease: 'none',
-                scrollTrigger: {
-                    trigger: section,
-                    start: 'top top',
-                    end: () => `+=${distance()}`,
-                    pin: true,
-                    scrub: 1,
-                    invalidateOnRefresh: true,
-                    // refresh before the triggers created earlier, so sections below
-                    // (Contact) account for the extra pinned scroll distance
-                    refreshPriority: 1,
-                },
-            });
-            ScrollTrigger.sort();
-
-            return () => section.classList.remove('projects--horizontal');
-        });
-
-        /* ----- custom cursor ring (fine pointers only) ----- */
-        if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
-            const ring = document.createElement('div');
-            ring.className = 'cursor-ring';
-            ring.setAttribute('aria-hidden', 'true');
-            document.body.appendChild(ring);
-
-            gsap.set(ring, { xPercent: -50, yPercent: -50 });
-            const xTo = gsap.quickTo(ring, 'x', { duration: 0.35, ease: 'power3' });
-            const yTo = gsap.quickTo(ring, 'y', { duration: 0.35, ease: 'power3' });
-            const interactive = 'a, button, .card, .testimonial, .bento__card';
-
-            window.addEventListener('pointermove', e => {
-                ring.classList.add('is-visible');
-                xTo(e.clientX);
-                yTo(e.clientY);
-            });
-            document.documentElement.addEventListener('mouseleave', () => ring.classList.remove('is-visible'));
-            document.addEventListener('pointerover', e => {
-                if (e.target.closest?.(interactive)) ring.classList.add('is-hover');
-            });
-            document.addEventListener('pointerout', e => {
-                if (e.target.closest?.(interactive) && !e.relatedTarget?.closest?.(interactive)) {
-                    ring.classList.remove('is-hover');
-                }
-            });
-        }
-
         /* ----- Lenis smooth (inertia) scrolling, synced with ScrollTrigger ----- */
         if (window.Lenis) {
             lenis = new Lenis({ anchors: true, lerp: 0.1 });
@@ -753,6 +690,9 @@ document.querySelectorAll('[data-nav]').forEach(link => {
 const scrollProgressBar = document.getElementById('scrollProgress');
 const backToTopBtn = document.getElementById('backToTop');
 
+const navEl = document.getElementById('nav');
+let lastScrollTop = window.scrollY;
+
 function onScrollUpdate() {
 
     const scrollTop = window.scrollY;
@@ -761,6 +701,19 @@ function onScrollUpdate() {
 
     if (scrollProgressBar) scrollProgressBar.style.width = `${pct}%`;
     if (backToTopBtn) backToTopBtn.classList.toggle('is-visible', scrollTop > window.innerHeight * 0.8);
+
+    // hide the nav while scrolling down, bring it back on any scroll up;
+    // never hide it near the top or while the mobile menu is open
+    if (navEl) {
+        const delta = scrollTop - lastScrollTop;
+        const menuOpen = navToggle?.getAttribute('aria-expanded') === 'true';
+        if (scrollTop < 120 || delta < -4 || menuOpen) {
+            navEl.classList.remove('nav--hidden');
+        } else if (delta > 4) {
+            navEl.classList.add('nav--hidden');
+        }
+    }
+    lastScrollTop = scrollTop;
 }
 
 window.addEventListener('scroll', onScrollUpdate, { passive: true });

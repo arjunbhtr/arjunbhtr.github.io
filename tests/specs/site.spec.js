@@ -124,6 +124,18 @@ test.describe('Contact section', () => {
 });
 
 test.describe('Scroll interactions', () => {
+  test('nav hides while scrolling down and returns on scroll up', async ({ page }) => {
+    await page.goto('/');
+    const nav = page.locator('#nav');
+    await expect(nav).not.toHaveClass(/nav--hidden/);
+
+    await page.evaluate(() => window.scrollTo(0, 1500));
+    await expect(nav).toHaveClass(/nav--hidden/);
+
+    await page.evaluate(() => window.scrollTo(0, 1000));
+    await expect(nav).not.toHaveClass(/nav--hidden/);
+  });
+
   test('back-to-top button appears after scrolling and returns to top', async ({ page }) => {
     await page.goto('/');
     const button = page.locator('#backToTop');
