@@ -130,6 +130,11 @@ a { color: inherit; text-decoration: none; }
     font-size: 0.92rem;
     color: var(--muted);
 }
+.nav__actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
 .nav__links a { transition: color 0.2s; position: relative; }
 .nav__links a:hover, .nav__links a.active { color: var(--ink); }
 .nav__links a.active::after {
