@@ -22,12 +22,39 @@ const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)
         document.dispatchEvent(new CustomEvent('themechange', { detail: { theme } }));
     }
 
-    applyTheme(stored ?? (systemPrefersLight ? 'light' : 'dark'));
+    // tracked here rather than read from the DOM: the DOM update lands a frame
+    // late inside the View Transition, so fast double-clicks would read stale state
+    let currentTheme = stored ?? (systemPrefersLight ? 'light' : 'dark');
+    applyTheme(currentTheme);
 
     toggleBtn?.addEventListener('click', () => {
-        const next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-        applyTheme(next);
-        localStorage.setItem('theme', next);
+        const next = currentTheme === 'light' ? 'dark' : 'light';
+        currentTheme = next;
+        const commit = () => {
+            applyTheme(next);
+            localStorage.setItem('theme', next);
+        };
+
+        if (!document.startViewTransition || prefersReducedMotion) {
+            commit();
+            return;
+        }
+
+        // circular reveal of the new theme, expanding from the toggle button
+        const rect = toggleBtn.getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        const y = rect.top + rect.height / 2;
+        const radius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+
+        document.startViewTransition(commit).ready
+            .then(() => {
+                root.animate(
+                    { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+                    { duration: 600, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', pseudoElement: '::view-transition-new(root)' }
+                );
+            })
+            // rapid re-clicks skip the in-flight transition; the theme still commits
+            .catch(() => {});
     });
 })();
 
@@ -277,12 +304,100 @@ function animateCounters() {
     });
 }
 
+/* ---------- split section titles into masked words ---------- */
+const splitTitles = [];
+
+if (!prefersReducedMotion && window.gsap && window.ScrollTrigger) {
+    document.querySelectorAll('.section__title').forEach(title => {
+        const text = title.textContent.trim();
+        const words = text.split(/\s+/);
+
+        title.textContent = '';
+        title.setAttribute('aria-label', text);
+        words.forEach((word, i) => {
+            const mask = document.createElement('span');
+            mask.className = 'word-mask';
+            mask.setAttribute('aria-hidden', 'true');
+            const inner = document.createElement('span');
+            inner.className = 'word';
+            inner.textContent = word;
+            mask.appendChild(inner);
+            title.appendChild(mask);
+            if (i < words.length - 1) title.appendChild(document.createTextNode(' '));
+        });
+
+        // the words animate themselves; drop the generic fade so they aren't hidden twice
+        title.removeAttribute('data-reveal');
+        splitTitles.push(title);
+    });
+}
+
+/* ---------- decode/scramble effect for section eyebrows ---------- */
+function scrambleText(el) {
+    const finalText = el.dataset.text ?? el.textContent;
+    el.dataset.text = finalText;
+
+    const glyphs = '!<>-_/[]{}=+*^?#01';
+    const duration = 700;
+    const start = performance.now();
+
+    function frame(now) {
+        const progress = Math.min((now - start) / duration, 1);
+        const revealed = Math.floor(progress * finalText.length);
+        let out = '';
+        for (let i = 0; i < finalText.length; i++) {
+            const ch = finalText[i];
+            out += i < revealed || ch === ' ' ? ch : glyphs[Math.floor(Math.random() * glyphs.length)];
+        }
+        el.textContent = out;
+        if (progress < 1) requestAnimationFrame(frame);
+    }
+
+    requestAnimationFrame(frame);
+}
+
+/* ---------- cursor spotlight on cards ---------- */
+if (window.matchMedia('(hover: hover)').matches) {
+    document.querySelectorAll('.bento__card, .card, .testimonial').forEach(el => {
+        el.classList.add('spotlight');
+        el.addEventListener('pointermove', e => {
+            const rect = el.getBoundingClientRect();
+            el.style.setProperty('--mx', `${e.clientX - rect.left}px`);
+            el.style.setProperty('--my', `${e.clientY - rect.top}px`);
+        });
+        el.addEventListener('pointerleave', () => {
+            el.style.removeProperty('--mx');
+            el.style.removeProperty('--my');
+        });
+    });
+}
+
 /* ---------- GSAP scroll reveals + nav highlighting ---------- */
 if (window.gsap && window.ScrollTrigger) {
 
     gsap.registerPlugin(ScrollTrigger);
 
     if (!prefersReducedMotion) {
+
+        splitTitles.forEach(title => {
+            gsap.from(title.querySelectorAll('.word'), {
+                yPercent: 110,
+                duration: 0.8,
+                ease: 'power4.out',
+                stagger: 0.06,
+                scrollTrigger: { trigger: title, start: 'top 85%' },
+            });
+        });
+
+        document.querySelectorAll('.section__eyebrow').forEach(eyebrow => {
+            eyebrow.setAttribute('aria-label', eyebrow.textContent.trim());
+            ScrollTrigger.create({
+                trigger: eyebrow,
+                start: 'top 88%',
+                once: true,
+                onEnter: () => scrambleText(eyebrow),
+            });
+        });
 
         gsap.utils.toArray('[data-reveal]').forEach((el, i) => {
             gsap.to(el, {

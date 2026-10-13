@@ -56,14 +56,34 @@ test.describe('Theme toggle', () => {
     const toggle = page.locator('#themeToggle');
 
     const before = await html.getAttribute('data-theme');
+    const expected = before === 'light' ? 'dark' : 'light';
     await toggle.click();
-    const after = await html.getAttribute('data-theme');
 
-    expect(after).not.toBe(before);
-    await expect(toggle).toHaveAttribute('aria-pressed', after === 'light' ? 'true' : 'false');
+    // the switch commits inside a View Transition callback, so it lands a
+    // frame after the click — use auto-retrying assertions, not a snapshot read
+    await expect(html).toHaveAttribute('data-theme', expected);
+    await expect(toggle).toHaveAttribute('aria-pressed', expected === 'light' ? 'true' : 'false');
 
     await page.reload();
-    await expect(html).toHaveAttribute('data-theme', after ?? '');
+    await expect(html).toHaveAttribute('data-theme', expected);
+  });
+
+  test('toggling twice quickly via keyboard returns to the original theme', async ({ page }) => {
+    await page.goto('/');
+    const html = page.locator('html');
+    const before = await html.getAttribute('data-theme');
+
+    // regression guard: the commit lands a frame late inside the View
+    // Transition, so reading state from the DOM made rapid toggles flip only
+    // once. Keyboard is used because a mouse second-click is (correctly)
+    // swallowed by the transition's snapshot overlay; Enter on the focused
+    // button is not.
+    await page.locator('#themeToggle').focus();
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Enter');
+
+    await page.waitForTimeout(1000);
+    await expect(html).toHaveAttribute('data-theme', before ?? '');
   });
 });
 
