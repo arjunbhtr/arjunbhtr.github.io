@@ -2,6 +2,9 @@ document.body.classList.add('js-ready');
 
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+// smooth-scroll instance (Lenis); stays null when reduced motion is requested or the CDN fails
+let lenis = null;
+
 /* ---------- light / dark theme toggle ---------- */
 (function initThemeToggle() {
 
@@ -332,6 +335,65 @@ if (!prefersReducedMotion && window.gsap && window.ScrollTrigger) {
     });
 }
 
+/* ---------- split hero name into letters (3D flip intro) ---------- */
+const heroChars = [];
+const heroNameEl = document.querySelector('.hero__name');
+
+if (heroNameEl && !prefersReducedMotion && window.gsap && window.ScrollTrigger) {
+    const text = heroNameEl.textContent.trim();
+    heroNameEl.textContent = '';
+    heroNameEl.setAttribute('aria-label', text);
+
+    text.split(' ').forEach((word, wi, all) => {
+        // each word stays unbreakable so letters never wrap mid-word
+        const wordEl = document.createElement('span');
+        wordEl.className = 'hero__word';
+        wordEl.setAttribute('aria-hidden', 'true');
+        [...word].forEach(ch => {
+            const charEl = document.createElement('span');
+            charEl.className = 'hero__char';
+            charEl.textContent = ch;
+            wordEl.appendChild(charEl);
+            heroChars.push(charEl);
+        });
+        heroNameEl.appendChild(wordEl);
+        if (wi < all.length - 1) heroNameEl.appendChild(document.createTextNode(' '));
+    });
+
+    heroNameEl.removeAttribute('data-reveal');
+}
+
+/* ---------- split About paragraphs into words (scroll-scrubbed highlight) ---------- */
+const scrubParagraphs = [];
+
+if (!prefersReducedMotion && window.gsap && window.ScrollTrigger) {
+    document.querySelectorAll('.about__text').forEach(p => {
+        // walk text nodes so inline <strong> emphasis survives the split
+        const walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT);
+        const textNodes = [];
+        while (walker.nextNode()) textNodes.push(walker.currentNode);
+
+        textNodes.forEach(node => {
+            const frag = document.createDocumentFragment();
+            node.textContent.split(/(\s+)/).forEach(part => {
+                if (!part) return;
+                if (/^\s+$/.test(part)) {
+                    frag.appendChild(document.createTextNode(part));
+                    return;
+                }
+                const wordEl = document.createElement('span');
+                wordEl.className = 'scrub-word';
+                wordEl.textContent = part;
+                frag.appendChild(wordEl);
+            });
+            node.replaceWith(frag);
+        });
+
+        p.removeAttribute('data-reveal');
+        scrubParagraphs.push(p);
+    });
+}
+
 /* ---------- decode/scramble effect for section eyebrows ---------- */
 function scrambleText(el) {
     const finalText = el.dataset.text ?? el.textContent;
@@ -399,6 +461,34 @@ if (window.gsap && window.ScrollTrigger) {
             });
         });
 
+        if (heroChars.length) {
+            gsap.from(heroChars, {
+                yPercent: 110,
+                rotateX: -85,
+                opacity: 0,
+                duration: 0.9,
+                ease: 'power4.out',
+                stagger: 0.045,
+                delay: 0.15,
+            });
+        }
+
+        // light up About text word by word as it scrolls through the viewport.
+        // Toggles a class (muted -> full ink) rather than fading from invisible,
+        // so the resting state still meets text-contrast requirements.
+        scrubParagraphs.forEach(p => {
+            const words = p.querySelectorAll('.scrub-word');
+            ScrollTrigger.create({
+                trigger: p,
+                start: 'top 80%',
+                end: 'bottom 45%',
+                onUpdate: self => {
+                    const lit = Math.round(self.progress * words.length);
+                    words.forEach((w, i) => w.classList.toggle('is-lit', i < lit));
+                },
+            });
+        });
+
         gsap.utils.toArray('[data-reveal]').forEach((el, i) => {
             gsap.to(el, {
                 opacity: 1,
@@ -449,6 +539,99 @@ if (window.gsap && window.ScrollTrigger) {
             },
         });
     });
+
+    if (!prefersReducedMotion) {
+
+        /* ----- Projects: pin the section and scroll cards sideways (desktop) ----- */
+        gsap.matchMedia().add('(min-width: 1024px)', () => {
+            const section = document.getElementById('projects');
+            const grid = section?.querySelector('.projects__grid');
+            if (!section || !grid) return;
+
+            section.classList.add('projects--horizontal');
+
+            // measured from the section box, which isn't transformed, so it stays
+            // correct on refresh even mid-scroll
+            const distance = () => {
+                const contentLeft = section.getBoundingClientRect().left + parseFloat(getComputedStyle(section).paddingLeft);
+                return Math.max(0, grid.scrollWidth - (window.innerWidth - contentLeft - 64));
+            };
+
+            gsap.to(grid, {
+                x: () => -distance(),
+                ease: 'none',
+                scrollTrigger: {
+                    trigger: section,
+                    start: 'top top',
+                    end: () => `+=${distance()}`,
+                    pin: true,
+                    scrub: 1,
+                    invalidateOnRefresh: true,
+                    // refresh before the triggers created earlier, so sections below
+                    // (Contact) account for the extra pinned scroll distance
+                    refreshPriority: 1,
+                },
+            });
+            ScrollTrigger.sort();
+
+            return () => section.classList.remove('projects--horizontal');
+        });
+
+        /* ----- custom cursor ring (fine pointers only) ----- */
+        if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+            const ring = document.createElement('div');
+            ring.className = 'cursor-ring';
+            ring.setAttribute('aria-hidden', 'true');
+            document.body.appendChild(ring);
+
+            gsap.set(ring, { xPercent: -50, yPercent: -50 });
+            const xTo = gsap.quickTo(ring, 'x', { duration: 0.35, ease: 'power3' });
+            const yTo = gsap.quickTo(ring, 'y', { duration: 0.35, ease: 'power3' });
+            const interactive = 'a, button, .card, .testimonial, .bento__card';
+
+            window.addEventListener('pointermove', e => {
+                ring.classList.add('is-visible');
+                xTo(e.clientX);
+                yTo(e.clientY);
+            });
+            document.documentElement.addEventListener('mouseleave', () => ring.classList.remove('is-visible'));
+            document.addEventListener('pointerover', e => {
+                if (e.target.closest?.(interactive)) ring.classList.add('is-hover');
+            });
+            document.addEventListener('pointerout', e => {
+                if (e.target.closest?.(interactive) && !e.relatedTarget?.closest?.(interactive)) {
+                    ring.classList.remove('is-hover');
+                }
+            });
+        }
+
+        /* ----- Lenis smooth (inertia) scrolling, synced with ScrollTrigger ----- */
+        if (window.Lenis) {
+            lenis = new Lenis({ anchors: true, lerp: 0.1 });
+            lenis.on('scroll', ScrollTrigger.update);
+            gsap.ticker.add(time => lenis.raf(time * 1000));
+            gsap.ticker.lagSmoothing(0);
+
+            /* ----- marquee speeds up with scroll velocity and follows scroll direction ----- */
+            const marqueeAnim = document.querySelector('.marquee__track')?.getAnimations?.()[0];
+            if (marqueeAnim) {
+                // start deep into the infinite loop so reversing never hits time 0,
+                // where a backwards-playing animation would finish and stop
+                marqueeAnim.currentTime = 38000 * 1000;
+
+                let boost = 0;
+                let direction = 1;
+                lenis.on('scroll', e => {
+                    boost = Math.min(Math.abs(e.velocity) * 0.15, 6);
+                    if (e.direction) direction = e.direction;
+                });
+                gsap.ticker.add(() => {
+                    marqueeAnim.playbackRate = direction * (1 + boost);
+                    boost *= 0.92;
+                });
+            }
+        }
+    }
 
 } else {
     // GSAP failed to load (offline, CDN blocked) — show content plainly, no animation.
@@ -584,7 +767,11 @@ window.addEventListener('scroll', onScrollUpdate, { passive: true });
 onScrollUpdate();
 
 backToTopBtn?.addEventListener('click', () => {
-    window.scrollTo({ top: 0, behavior: prefersReducedMotion ? 'auto' : 'smooth' });
+    if (lenis) {
+        lenis.scrollTo(0);
+    } else {
+        window.scrollTo({ top: 0, behavior: prefersReducedMotion ? 'auto' : 'smooth' });
+    }
 });
 
 /* ---------- staggered tag-chip pop-in ---------- */

@@ -197,7 +197,9 @@ a { color: inherit; text-decoration: none; }
 .nav__toggle span { width: 22px; height: 2px; background: var(--ink); border-radius: 2px; }
 
 /* ---------- layout helpers ---------- */
-main { position: relative; z-index: 1; }
+/* clip (not hidden): contains the wide horizontal-projects track without creating
+   a scroll container, so the page can't be shifted sideways when focusing a card */
+main { position: relative; z-index: 1; overflow-x: clip; }
 
 .section {
     max-width: var(--max-w);
@@ -655,6 +657,48 @@ main { position: relative; z-index: 1; }
     from { transform: translateX(0); }
     to { transform: translateX(-50%); }
 }
+
+/* ---------- Lenis smooth scroll (from Lenis's recommended CSS) ---------- */
+html.lenis, html.lenis body { height: auto; }
+/* native smooth scrolling fights Lenis's own interpolation */
+html.lenis { scroll-behavior: auto; }
+.lenis.lenis-stopped { overflow: clip; }
+.lenis.lenis-smooth iframe { pointer-events: none; }
+
+/* ---------- hero name: per-letter 3D flip ---------- */
+.hero__name { perspective: 800px; }
+.hero__word { display: inline-block; white-space: nowrap; }
+.hero__char { display: inline-block; transform-origin: 50% 100%; will-change: transform; }
+
+/* ---------- About: scroll-scrubbed word highlight ---------- */
+.about__text .scrub-word { color: var(--muted); transition: color 0.35s ease; }
+.about__text .scrub-word.is-lit { color: var(--ink); }
+
+/* ---------- Projects: pinned horizontal scroll (desktop, toggled by JS) ---------- */
+.projects--horizontal { padding-top: 100px; padding-bottom: 48px; }
+.projects--horizontal .projects__grid {
+    display: flex;
+    gap: 24px;
+    width: max-content;
+}
+.projects--horizontal .projects__grid .card { width: 420px; flex-shrink: 0; }
+
+/* ---------- custom cursor ring ---------- */
+.cursor-ring {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 34px;
+    height: 34px;
+    border: 1.5px solid var(--accent);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0;
+    transition: opacity 0.25s, width 0.25s ease, height 0.25s ease, background-color 0.25s;
+}
+.cursor-ring.is-visible { opacity: 1; }
+.cursor-ring.is-hover { width: 64px; height: 64px; background-color: var(--accent-soft); }
 
 /* ---------- responsive ---------- */
 @media (min-width: 1400px) {
