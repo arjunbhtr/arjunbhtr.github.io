@@ -13,7 +13,9 @@ export default defineConfig({
     command: 'npx serve .. -l 4173',
     url: 'http://localhost:4173',
     reuseExistingServer: !process.env.CI,
-    timeout: 20000,
+    timeout: 60000,
+    // serve's startup update check hits the network and can stall the boot
+    env: { NO_UPDATE_CHECK: '1' },
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },

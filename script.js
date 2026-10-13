@@ -67,9 +67,27 @@ let lenis = null;
     const container = document.getElementById('heroBg3d');
     const heroEl = document.getElementById('hero');
 
-    if (!container || !heroEl || prefersReducedMotion || !(window.VANTA && window.THREE)) {
-        return; // CDN blocked, reduced motion requested, or markup missing — leave the static grid as-is
+    // reduced motion: skip the effect entirely, including the ~600KB download
+    if (!container || !heroEl || prefersReducedMotion) return;
+
+    function loadScript(src) {
+        return new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = src;
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
     }
+
+    // Three.js is large; loading it after the page has rendered keeps it off the
+    // critical path so the hero text paints first and the 3D background fades in after
+    window.addEventListener('load', () => {
+        loadScript('https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js')
+            .then(() => loadScript('https://cdnjs.cloudflare.com/ajax/libs/vanta/0.5.24/vanta.net.min.js'))
+            .then(() => { if (window.VANTA && window.THREE) start(); })
+            .catch(() => {}); // CDN blocked — keep the static grid background
+    }, { once: true });
 
     function hexVarToNumber(varName, fallback) {
         const value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
@@ -110,18 +128,21 @@ let lenis = null;
         vantaEffect = null;
     }
 
-    create();
+    function start() {
+        create();
+        container.classList.add('is-ready');
 
-    document.addEventListener('themechange', () => {
-        vantaEffect?.setOptions(currentColors());
-    });
+        document.addEventListener('themechange', () => {
+            vantaEffect?.setOptions(currentColors());
+        });
 
-    // Stop the WebGL render loop while the hero is far out of view, resume on return.
-    const observer = new IntersectionObserver(
-        entries => entries.forEach(entry => (entry.isIntersecting ? create() : destroy())),
-        { rootMargin: '200px 0px' }
-    );
-    observer.observe(heroEl);
+        // Stop the WebGL render loop while the hero is far out of view, resume on return.
+        const observer = new IntersectionObserver(
+            entries => entries.forEach(entry => (entry.isIntersecting ? create() : destroy())),
+            { rootMargin: '200px 0px' }
+        );
+        observer.observe(heroEl);
+    }
 })();
 
 /* ---------- typing effect for the hero role line (human-paced) ---------- */
